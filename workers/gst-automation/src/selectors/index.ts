@@ -26,7 +26,8 @@ export const selectors = {
       mobileOtp: [/OTP.*mobile/i, /mobile.*OTP/i, /Enter OTP.*Mobile/i],
       emailOtp: [/OTP.*email/i, /email.*OTP/i, /Enter OTP.*Email/i],
     },
-    captchaInput: 'input[name*="captcha"], input[id*="captcha"]',
+    captchaInput:
+      '#captchatrn, input[name*="captcha"], input[id*="captcha"], input[id*="Captcha"]',
     captchaImage: 'img[id*="captcha"], img[id*="Captcha"], img[src*="captcha"], img[src*="Captcha"], #imgCaptcha',
     proceedButton: 'button:has-text("PROCEED"), input[value="PROCEED"]',
     validateOtpButton:
@@ -41,6 +42,11 @@ export const selectors = {
     trnInput:
       'input[type="text"][name*="trn" i], input#trninp, input[name="trninp"], input[name="tmpRefNo"], input[type="text"][id="trn"]',
     editIcon: 'a[title*="Edit"], .fa-pencil, img[alt*="Edit"]',
+    editRowByTrn: (trn: string) =>
+      `tr:has-text("${trn}") a[title*="Edit"], tr:has-text("${trn}") .fa-pencil, tr:has-text("${trn}") img[alt*="Edit"]`,
+    continueButton: 'button:has-text("CONTINUE"), input[value="CONTINUE"]',
+    modalYes: 'button:has-text("YES")',
+    modalOk: 'button:has-text("OK")',
     saveContinue:
       'button:has-text("SAVE & CONTINUE"), button:has-text("SAVE AND CONTINUE"), button:has-text("SAVE"), input[value*="SAVE"]',
     tabs: {
@@ -49,10 +55,17 @@ export const selectors = {
       authorizedSignatory: 'Authorized Signatory',
       authorizedRepresentative: 'Authorized Representative',
       principalPlace: 'Principal Place of Business',
+      additionalPlaces: 'Additional Places of Business',
       goods: 'Goods and Services',
       stateSpecific: 'State Specific Information',
       aadhaar: 'Aadhaar Authentication',
       verification: 'Verification',
+    },
+    jurisdiction: {
+      ward: /Sector.*Circle.*Ward|Ward/i,
+      commissionerate: /Commissionerate/i,
+      division: /^Division$/i,
+      range: /^Range$/i,
     },
     submitEvc: 'button:has-text("SUBMIT WITH EVC"), input[value*="EVC"]',
     evcOtp: 'input[name*="otp"], input[id*="otp"]',

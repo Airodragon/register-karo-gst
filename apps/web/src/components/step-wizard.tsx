@@ -894,6 +894,35 @@ export function StepWizard({
               disabled={placeSameAsResidential && !multiPerson}
             />
             <FormField
+              id="locality"
+              label="Locality / sub-locality"
+              hint="As on GST portal (e.g. Dwarka Mor)."
+              value={(syncedLocal.place.locality as string) ?? ''}
+              onChange={(v) => updateSection('place', 'locality', v)}
+              disabled={placeSameAsResidential && !multiPerson}
+            />
+            <FormField
+              id="flatNo"
+              label="Flat / building no."
+              value={(syncedLocal.place.flatNo as string) ?? ''}
+              onChange={(v) => updateSection('place', 'flatNo', v)}
+              disabled={placeSameAsResidential && !multiPerson}
+            />
+            <FormField
+              id="floorNo"
+              label="Floor no."
+              value={(syncedLocal.place.floorNo as string) ?? ''}
+              onChange={(v) => updateSection('place', 'floorNo', v)}
+              disabled={placeSameAsResidential && !multiPerson}
+            />
+            <FormField
+              id="landmark"
+              label="Nearby landmark"
+              value={(syncedLocal.place.landmark as string) ?? ''}
+              onChange={(v) => updateSection('place', 'landmark', v)}
+              disabled={placeSameAsResidential && !multiPerson}
+            />
+            <FormField
               id="natureOfPossession"
               label="Nature of possession"
               hint="Ownership status of premises."

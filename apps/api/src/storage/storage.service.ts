@@ -60,4 +60,17 @@ export class StorageService {
       new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
     );
   }
+
+  async getBuffer(key: string): Promise<Buffer> {
+    const response = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    const body = response.Body;
+    if (!body) throw new Error(`Empty object for key: ${key}`);
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of body as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+  }
 }

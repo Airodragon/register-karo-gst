@@ -55,6 +55,22 @@ export class WorkerController {
     });
   }
 
+  @Get('applications/:id/documents/:type')
+  async getDocument(@Param('id') id: string, @Param('type') type: string) {
+    const app = await this.applicationsService.findOne(id);
+    const doc = app.documents?.find((d: { type: string }) => d.type === type);
+    if (!doc) {
+      return { found: false as const };
+    }
+    const buffer = await this.storage.getBuffer(doc.storageKey);
+    return {
+      found: true as const,
+      fileName: doc.fileName,
+      mimeType: doc.mimeType,
+      base64: buffer.toString('base64'),
+    };
+  }
+
   @Post('applications/:id/complete')
   complete(@Param('id') id: string, @Body() dto: WorkerCompleteDto) {
     if (!dto.success && dto.error) {

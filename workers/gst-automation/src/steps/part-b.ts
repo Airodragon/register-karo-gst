@@ -4,45 +4,51 @@ import { selectors } from '../selectors';
 import type { ApiClient } from '../api-client';
 import { saveSession } from '../session/context-manager';
 import { fillInputByLabel } from '../form-utils';
+import type { ResolvedDocuments } from '../document-resolver';
+import {
+  addHsnCode,
+  addSacCode,
+  addressFromPerson,
+  clickContinue,
+  clickTab,
+  dismissModals,
+  fillByLabel,
+  fillPortalAddress,
+  fillPromoterPasToggle,
+  fillSplitNameFields,
+  fillVerificationTab,
+  isTabComplete,
+  reasonRegistrationCandidates,
+  resolveJurisdictionDropdowns,
+  saveAndContinue,
+  selectAadhaarPerson,
+  selectByScope,
+  selectGender,
+  setPortalToggle,
+  splitFullName,
+  toPortalDate,
+  uploadPortalDocument,
+} from './part-b-portal';
 
-function toPortalDate(iso: string): string {
-  const [y, m, d] = iso.split('-');
-  if (!y || !m || !d) return iso;
-  return `${d}/${m}/${y}`;
-}
+type TabRunner = () => Promise<void>;
 
-async function clickTab(page: Page, tabName: string): Promise<void> {
-  const tab = page
-    .locator(`li:has-text("${tabName}"), a:has-text("${tabName}")`)
-    .first();
-  await tab.waitFor({ state: 'visible', timeout: 15000 });
-  await tab.click();
-  await page.waitForTimeout(1500);
-}
-
-async function saveAndContinue(page: Page): Promise<void> {
-  await page.locator(selectors.partB.saveContinue).first().click();
-  await page.waitForTimeout(2000);
-}
-
-async function fillByLabel(page: Page, label: RegExp, value: string): Promise<void> {
-  const field = page.getByLabel(label).first();
-  if (await field.count()) {
-    await field.fill(value);
-    return;
-  }
-  await page.locator(`input[placeholder*="${label.source}"]`).first().fill(value).catch(() => {});
-}
-
-async function selectByScope(
+async function runTabIfNeeded(
   page: Page,
-  scopeSelector: string,
-  label: string,
+  tabName: string,
+  runner: TabRunner,
 ): Promise<void> {
-  const select = page.locator(scopeSelector).first();
-  if (await select.count()) {
-    await select.selectOption({ label }).catch(() => {});
-  }
+  if (await isTabComplete(page, tabName)) return;
+  await runner();
+}
+
+async function persistTab(
+  page: Page,
+  api: ApiClient,
+  applicationId: string,
+  extra?: Record<string, unknown>,
+): Promise<void> {
+  const session = await saveSession(page);
+  await api.updateApplication(applicationId, { portalSession: session, ...extra });
 }
 
 export async function fillBusinessDetails(
@@ -62,39 +68,49 @@ export async function fillBusinessDetails(
   await fillByLabel(page, /Trade Name/i, business.tradeName);
   await selectByScope(
     page,
-    'select[name*="constitutionOfBusiness"], select[id*="constitution"]',
+    'select[name*="constitution"], select[id*="constitution"]',
     business.constitutionOfBusiness,
   );
+  await selectByScope(
+    page,
+    'select[name*="district"], select[id*="district"], select[id*="Distr"]',
+    business.district,
+  );
+
+  if (!business.casualTaxpayer) {
+    await setPortalToggle(page, /casual taxable person/i, false);
+  }
+  if (!business.compositionLevy) {
+    await setPortalToggle(page, /Composition/i, false);
+  }
+
+  if (business.rule14A) {
+    await setPortalToggle(page, /Rule 14A/i, true);
+  } else {
+    await page.getByText(/Rule 14A/i).locator('..').getByText('No').first().click().catch(() => {});
+  }
+
+  for (const reason of reasonRegistrationCandidates(business.reasonForRegistration)) {
+    const ok = await page
+      .locator('select[name*="reason"], select[id*="reason"]')
+      .first()
+      .selectOption({ label: reason })
+      .then(() => true)
+      .catch(() => false);
+    if (ok) break;
+  }
+
   await fillByLabel(page, /commencement/i, toPortalDate(business.commencementDate));
   await fillByLabel(page, /liability/i, toPortalDate(business.liabilityDate));
 
-  if (!business.compositionLevy) {
-    await page.getByLabel(/Composition/i).locator('..').getByText('No').click().catch(() => {});
-  }
-  if (!business.casualTaxpayer) {
-    await page
-      .getByText(/casual taxable person/i)
-      .locator('..')
-      .getByText('No')
-      .click()
-      .catch(() => {});
-  }
-
-  await selectByScope(
-    page,
-    'select[name*="reason"], select[id*="reason"]',
-    business.reasonForRegistration,
-  );
-
   await saveAndContinue(page);
-  const session = await saveSession(page);
-  await api.updateApplication(applicationId, { portalSession: session });
+  await persistTab(page, api, applicationId);
 }
 
 export async function fillPromoterDetails(
   page: Page,
   promoter: ApplicationFormData['promoter'],
-  documents: ApplicationFormData['documents'],
+  docs: ResolvedDocuments,
   api: ApiClient,
   applicationId: string,
 ): Promise<void> {
@@ -102,38 +118,70 @@ export async function fillPromoterDetails(
   await api.updateApplication(applicationId, { currentStep: 'PEOPLE' });
   await clickTab(page, selectors.partB.tabs.promoters);
 
-  await fillByLabel(page, /First Name/i, promoter.firstName);
-  await fillByLabel(page, /Last Name/i, promoter.lastName);
-  await fillByLabel(page, /Father/i, promoter.fatherName);
-  if (promoter.dateOfBirth) {
-    await fillByLabel(page, /Date of Birth|DOB/i, toPortalDate(promoter.dateOfBirth));
+  await fillByLabel(page, /^First Name/i, promoter.firstName);
+  if (promoter.middleName) {
+    await fillByLabel(page, /Middle Name/i, promoter.middleName);
   }
-  await fillInputByLabel(page, [/Permanent Account Number/i], promoter.pan);
+  await fillByLabel(page, /^Last Name/i, promoter.lastName);
+
+  const father = splitFullName(promoter.fatherName);
+  await fillSplitNameFields(page, /Name of Father/i, father.first, father.middle, father.last);
+
+  await fillByLabel(page, /Date of Birth/i, toPortalDate(promoter.dateOfBirth));
   await fillByLabel(page, /Mobile/i, promoter.mobile);
   await fillByLabel(page, /Email/i, promoter.email);
+  await selectGender(page, promoter.gender);
+  await fillByLabel(page, /Designation/i, promoter.designation);
+  await fillInputByLabel(page, [/Permanent Account Number/i], promoter.pan);
 
-  if (documents?.promoterPhoto) {
-    const fileInput = page.locator('input[type="file"]').first();
-    if (await fileInput.count()) {
-      // Document path resolved by worker from local cache if downloaded from S3
-    }
+  const addr = addressFromPerson(promoter.residentialAddress);
+  await fillPortalAddress(page, addr);
+
+  if (docs.promoterPhoto) {
+    await uploadPortalDocument(page, /Photo/i, docs.promoterPhoto);
+  }
+
+  if (promoter.isPrimaryAuthorizedSignatory) {
+    await fillPromoterPasToggle(page, true);
   }
 
   await saveAndContinue(page);
+  await dismissModals(page);
+  await persistTab(page, api, applicationId);
+}
 
+export async function fillAuthorizedSignatoryTab(
+  page: Page,
+  promoter: ApplicationFormData['promoter'],
+  api: ApiClient,
+  applicationId: string,
+): Promise<void> {
   await clickTab(page, selectors.partB.tabs.authorizedSignatory);
   if (promoter.isPrimaryAuthorizedSignatory) {
-    await page.getByText(/Primary Authorized Signatory/i).click().catch(() => {});
+    await page.getByText(/Primary Authorized Signatory/i).first().click().catch(() => {});
   }
   await saveAndContinue(page);
+  await persistTab(page, api, applicationId);
+}
 
-  const session = await saveSession(page);
-  await api.updateApplication(applicationId, { portalSession: session });
+export async function fillAuthorizedRepresentative(
+  page: Page,
+  place: ApplicationFormData['principalPlaceOfBusiness'],
+  api: ApiClient,
+  applicationId: string,
+): Promise<void> {
+  await api.reportProgress(applicationId, 'authorized_rep');
+  await clickTab(page, selectors.partB.tabs.authorizedRepresentative);
+  const hasRep = place.hasAuthorizedRepresentative ?? false;
+  await setPortalToggle(page, /Authorized Representative/i, hasRep);
+  await saveAndContinue(page);
+  await persistTab(page, api, applicationId);
 }
 
 export async function fillPrincipalPlace(
   page: Page,
   place: ApplicationFormData['principalPlaceOfBusiness'],
+  docs: ResolvedDocuments,
   api: ApiClient,
   applicationId: string,
 ): Promise<void> {
@@ -141,11 +189,24 @@ export async function fillPrincipalPlace(
   await api.updateApplication(applicationId, { currentStep: 'PLACE_OF_BUSINESS' });
   await clickTab(page, selectors.partB.tabs.principalPlace);
 
-  await fillByLabel(page, /Building/i, place.building);
-  await fillByLabel(page, /Street/i, place.street);
-  await fillByLabel(page, /City|Locality/i, place.city);
-  await fillByLabel(page, /PIN|Pincode/i, place.pincode);
-  await fillByLabel(page, /Email/i, place.email);
+  await fillPortalAddress(page, {
+    pincode: place.pincode,
+    locality: place.locality ?? place.city,
+    street: place.street,
+    building: place.building,
+    city: place.city,
+    floorNo: place.floorNo,
+    flatNo: place.flatNo,
+    landmark: place.landmark,
+  });
+
+  const jurisdiction = await resolveJurisdictionDropdowns(page, place.jurisdiction);
+  await api.reportProgress(applicationId, 'place_of_business', undefined, {
+    jurisdictionOptions: jurisdiction.options,
+    jurisdictionSelected: jurisdiction.selected,
+  });
+
+  await fillByLabel(page, /Office Email|Email/i, place.email);
   await fillByLabel(page, /Mobile/i, place.mobile);
 
   await selectByScope(
@@ -154,21 +215,30 @@ export async function fillPrincipalPlace(
     place.natureOfPossession,
   );
 
-  for (const activity of place.businessActivities) {
-    await page.getByLabel(activity).check().catch(() => {
-      page.getByText(activity).click();
-    });
+  if (docs.addressProof) {
+    await uploadPortalDocument(page, /Municipal|Khata|Address|Proof/i, docs.addressProof);
   }
 
+  for (const activity of place.businessActivities) {
+    await page.getByLabel(activity).check().catch(() => page.getByText(activity).first().click());
+  }
+
+  const hasAdditional = place.hasAdditionalPlaces ?? false;
+  await setPortalToggle(page, /Additional Place/i, hasAdditional);
+
   await saveAndContinue(page);
-  const session = await saveSession(page);
-  await api.updateApplication(applicationId, { portalSession: session });
+  await dismissModals(page);
+  await persistTab(page, api, applicationId);
+}
+
+export async function fillAdditionalPlaces(page: Page): Promise<void> {
+  await clickTab(page, selectors.partB.tabs.additionalPlaces);
+  await clickContinue(page);
 }
 
 export async function fillGoodsAndServices(
   page: Page,
   goods: ApplicationFormData['goodsAndServices'],
-  stateSpecific: ApplicationFormData['stateSpecific'],
   api: ApiClient,
   applicationId: string,
 ): Promise<void> {
@@ -176,61 +246,49 @@ export async function fillGoodsAndServices(
   await api.updateApplication(applicationId, { currentStep: 'GOODS_SERVICES' });
   await clickTab(page, selectors.partB.tabs.goods);
 
-  for (const hsn of goods.hsnCodes) {
-    const search = page.getByPlaceholder(/HSN/i).first();
-    if (await search.count()) {
-      await search.fill(hsn);
-      await page.keyboard.press('Enter');
-      await page.waitForTimeout(500);
-    }
+  const goodsTab = page.getByText('Goods', { exact: true }).first();
+  if (await goodsTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await goodsTab.click();
   }
 
+  for (const hsn of goods.hsnCodes) {
+    await addHsnCode(page, hsn);
+  }
   for (const sac of goods.sacCodes) {
-    const search = page.getByPlaceholder(/SAC|Service/i).first();
-    if (await search.count()) {
-      await search.fill(sac);
-      await page.keyboard.press('Enter');
-      await page.waitForTimeout(500);
-    }
+    await addSacCode(page, sac);
   }
 
   await saveAndContinue(page);
-
-  const hasStateSpecific =
-    !!stateSpecific?.caNumber ||
-    !!stateSpecific?.electricityBoard ||
-    !!stateSpecific?.professionalTaxEcNo ||
-    !!stateSpecific?.professionalTaxRcNo;
-
-  if (hasStateSpecific) {
-    await clickTab(page, selectors.partB.tabs.stateSpecific);
-    if (stateSpecific?.caNumber) {
-      await fillByLabel(page, /CA Number|Consumer/i, stateSpecific.caNumber);
-    }
-    if (stateSpecific?.electricityBoard) {
-      await selectByScope(
-        page,
-        'select[name*="electricity"], select[id*="electricity"], select[name*="board"]',
-        stateSpecific.electricityBoard,
-      );
-    }
-    if (stateSpecific?.professionalTaxEcNo) {
-      await fillByLabel(page, /Professional Tax.*EC|EC No/i, stateSpecific.professionalTaxEcNo);
-    }
-    if (stateSpecific?.professionalTaxRcNo) {
-      await fillByLabel(page, /Professional Tax.*RC|RC No/i, stateSpecific.professionalTaxRcNo);
-    }
-    await saveAndContinue(page);
-  }
-
-  const session = await saveSession(page);
-  await api.updateApplication(applicationId, { portalSession: session, currentStep: 'REVIEW_SUBMIT' });
+  await persistTab(page, api, applicationId);
 }
 
-export async function fillAadhaarAndVerification(
+export async function fillStateSpecific(
+  page: Page,
+  stateSpecific: ApplicationFormData['stateSpecific'],
+  api: ApiClient,
+  applicationId: string,
+): Promise<void> {
+  await api.reportProgress(applicationId, 'state_specific');
+  await clickTab(page, selectors.partB.tabs.stateSpecific);
+
+  if (stateSpecific?.professionalTaxEcNo) {
+    await fillByLabel(page, /Professional Tax.*EC|E\.C/i, stateSpecific.professionalTaxEcNo);
+  }
+  if (stateSpecific?.professionalTaxRcNo) {
+    await fillByLabel(page, /Professional Tax.*RC|R\.C/i, stateSpecific.professionalTaxRcNo);
+  }
+  if (stateSpecific?.stateExciseLicenseNo) {
+    await fillByLabel(page, /Excise License/i, stateSpecific.stateExciseLicenseNo);
+  }
+
+  await saveAndContinue(page);
+  await persistTab(page, api, applicationId, { currentStep: 'REVIEW_SUBMIT' });
+}
+
+export async function fillAadhaarTab(
   page: Page,
   aadhaar: ApplicationFormData['aadhaarAuthentication'],
-  verification: ApplicationFormData['verification'],
+  promoter: ApplicationFormData['promoter'],
   api: ApiClient,
   applicationId: string,
 ): Promise<void> {
@@ -238,28 +296,19 @@ export async function fillAadhaarAndVerification(
   await clickTab(page, selectors.partB.tabs.aadhaar);
 
   if (aadhaar.optIn) {
-    const aadhaarToggle = page
-      .locator('text=Do you want to opt for Aadhaar Authentication')
-      .locator('..');
-    await aadhaarToggle
-      .getByText('Yes')
-      .click()
-      .catch(async () => {
-        await page.locator('label:has-text("Yes")').first().click();
-      });
+    await setPortalToggle(page, /opt for Aadhaar Authentication/i, true);
+    const name = new RegExp(promoter.firstName, 'i');
+    await selectAadhaarPerson(page, name);
   }
 
   await saveAndContinue(page);
+  await dismissModals(page);
 
-  await clickTab(page, selectors.partB.tabs.verification);
-  await page.getByRole('checkbox').first().check().catch(() => {});
-  await fillByLabel(page, /Place/i, verification.place);
-
-  const session = await saveSession(page);
   await api.updateApplication(applicationId, {
-    portalSession: session,
     status: 'PART_B_SAVED',
+    currentStep: 'REVIEW_SUBMIT',
   });
+  await persistTab(page, api, applicationId);
 }
 
 export async function runPartB(
@@ -267,22 +316,46 @@ export async function runPartB(
   formData: ApplicationFormData,
   api: ApiClient,
   applicationId: string,
+  docs: ResolvedDocuments,
+  constitution?: string,
 ): Promise<void> {
-  await fillBusinessDetails(page, formData.business, api, applicationId);
-  await fillPromoterDetails(page, formData.promoter, formData.documents, api, applicationId);
-  await fillPrincipalPlace(page, formData.principalPlaceOfBusiness, api, applicationId);
-  await fillGoodsAndServices(
-    page,
-    formData.goodsAndServices,
-    formData.stateSpecific,
-    api,
-    applicationId,
+  void constitution;
+
+  await runTabIfNeeded(page, selectors.partB.tabs.businessDetails, () =>
+    fillBusinessDetails(page, formData.business, api, applicationId),
   );
-  await fillAadhaarAndVerification(
-    page,
-    formData.aadhaarAuthentication,
-    formData.verification,
-    api,
-    applicationId,
+
+  await runTabIfNeeded(page, selectors.partB.tabs.promoters, () =>
+    fillPromoterDetails(page, formData.promoter, docs, api, applicationId),
+  );
+
+  await runTabIfNeeded(page, selectors.partB.tabs.authorizedSignatory, () =>
+    fillAuthorizedSignatoryTab(page, formData.promoter, api, applicationId),
+  );
+
+  await runTabIfNeeded(page, selectors.partB.tabs.authorizedRepresentative, () =>
+    fillAuthorizedRepresentative(page, formData.principalPlaceOfBusiness, api, applicationId),
+  );
+
+  await runTabIfNeeded(page, selectors.partB.tabs.principalPlace, () =>
+    fillPrincipalPlace(page, formData.principalPlaceOfBusiness, docs, api, applicationId),
+  );
+
+  if (!(await isTabComplete(page, selectors.partB.tabs.additionalPlaces))) {
+    await fillAdditionalPlaces(page);
+  }
+
+  await runTabIfNeeded(page, selectors.partB.tabs.goods, () =>
+    fillGoodsAndServices(page, formData.goodsAndServices, api, applicationId),
+  );
+
+  await runTabIfNeeded(page, selectors.partB.tabs.stateSpecific, () =>
+    fillStateSpecific(page, formData.stateSpecific, api, applicationId),
+  );
+
+  await runTabIfNeeded(page, selectors.partB.tabs.aadhaar, () =>
+    fillAadhaarTab(page, formData.aadhaarAuthentication, formData.promoter, api, applicationId),
   );
 }
+
+export { fillVerificationTab };

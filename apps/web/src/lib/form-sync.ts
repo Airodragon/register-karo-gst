@@ -62,6 +62,10 @@ export function applyPartASync(
     if (local.promoterAddress.street) place.street = local.promoterAddress.street;
     if (local.promoterAddress.city) place.city = local.promoterAddress.city;
     if (local.promoterAddress.pincode) place.pincode = local.promoterAddress.pincode;
+    if (local.promoterAddress.locality) place.locality = local.promoterAddress.locality;
+    if (local.promoterAddress.landmark) place.landmark = local.promoterAddress.landmark;
+    if (local.promoterAddress.floorNo) place.floorNo = local.promoterAddress.floorNo;
+    if (local.promoterAddress.flatNo) place.flatNo = local.promoterAddress.flatNo;
   }
 
   const verification: Record<string, string> = {

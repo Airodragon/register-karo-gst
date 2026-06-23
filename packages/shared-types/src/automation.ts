@@ -3,6 +3,7 @@ export interface AutomationProgress {
   phase: string;
   label: string;
   updatedAt: string;
+  details?: Record<string, unknown>;
 }
 
 export const AUTOMATION_PHASES: Record<string, { percent: number; label: string }> = {
@@ -21,6 +22,10 @@ export const AUTOMATION_PHASES: Record<string, { percent: number; label: string 
   place_of_business: { percent: 60, label: 'Filling business address' },
   goods_services: { percent: 68, label: 'Adding HSN / SAC codes' },
   aadhaar_tab: { percent: 74, label: 'Aadhaar authentication setup' },
+  authorized_rep: { percent: 55, label: 'Authorized representative' },
+  additional_places: { percent: 64, label: 'Additional places of business' },
+  state_specific: { percent: 70, label: 'State specific information' },
+  verification_fill: { percent: 78, label: 'Filling verification' },
   awaiting_evc_otp: { percent: 82, label: 'Waiting for EVC OTP' },
   submitted: { percent: 88, label: 'Application submitted' },
   awaiting_aadhaar: { percent: 94, label: 'Waiting for Aadhaar authentication' },

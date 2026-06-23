@@ -12,6 +12,7 @@ export interface ApplicationRecord {
   arn?: string;
   formData: ApplicationFormData;
   portalSession?: Record<string, unknown>;
+  documents?: Array<{ id: string; type: string; fileName: string; mimeType: string }>;
 }
 
 export class ApiClient {
@@ -44,6 +45,7 @@ export class ApiClient {
     id: string,
     phase: keyof typeof AUTOMATION_PHASES,
     label?: string,
+    details?: Record<string, unknown>,
   ): Promise<void> {
     const info = AUTOMATION_PHASES[phase];
     if (!info) return;
@@ -52,8 +54,27 @@ export class ApiClient {
       phase,
       label: label ?? info.label,
       updatedAt: new Date().toISOString(),
+      ...(details ? { details } : {}),
     };
     await this.updateApplication(id, { automationProgress: progress });
+  }
+
+  async downloadDocument(
+    applicationId: string,
+    type: string,
+  ): Promise<{ fileName: string; base64: string } | null> {
+    const res = await fetch(
+      `${this.apiUrl}/api/internal/worker/applications/${applicationId}/documents/${type}`,
+      { headers: { 'x-worker-token': this.workerToken } },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      found: boolean;
+      fileName?: string;
+      base64?: string;
+    };
+    if (!data.found || !data.base64 || !data.fileName) return null;
+    return { fileName: data.fileName, base64: data.base64 };
   }
 
   async completeJob(id: string, success: boolean, error?: string): Promise<void> {

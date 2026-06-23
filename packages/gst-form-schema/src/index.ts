@@ -18,6 +18,17 @@ export const addressSchema = z.object({
   city: z.string().min(1, 'City is required'),
   state: z.string().min(1, 'State is required'),
   pincode: pincodeSchema,
+  locality: z.string().optional(),
+  landmark: z.string().optional(),
+  floorNo: z.string().optional(),
+  flatNo: z.string().optional(),
+});
+
+export const jurisdictionSchema = z.object({
+  ward: z.string().optional(),
+  commissionerate: z.string().optional(),
+  division: z.string().optional(),
+  range: z.string().optional(),
 });
 
 export const partASchema = z.object({
@@ -70,8 +81,15 @@ export const principalPlaceSchema = z.object({
   email: z.string().email(),
   mobile: mobileSchema,
   telephone: z.string().optional(),
+  locality: z.string().optional(),
+  landmark: z.string().optional(),
+  floorNo: z.string().optional(),
+  flatNo: z.string().optional(),
   natureOfPossession: z.enum(['Own', 'Rented', 'Leased', 'Consent', 'Others']),
   businessActivities: z.array(z.string()).min(1),
+  jurisdiction: jurisdictionSchema.optional(),
+  hasAuthorizedRepresentative: z.boolean().optional(),
+  hasAdditionalPlaces: z.boolean().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
 });

@@ -22,6 +22,10 @@ export class AutomationProgressDto {
 
   @IsString()
   updatedAt!: string;
+
+  @IsOptional()
+  @IsObject()
+  details?: Record<string, unknown>;
 }
 
 export class WorkerUpdateDto {

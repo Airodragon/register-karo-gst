@@ -4,6 +4,7 @@ import { ApiClient } from './api-client';
 import { InputWaiter } from './input-waiter';
 import { runPartA, loginWithTrn } from './steps/part-a';
 import { runPartB } from './steps/part-b';
+import { resolveDocuments } from './document-resolver';
 import { runSubmitFlow } from './steps/submit-arn';
 import { restoreSession } from './session/context-manager';
 import { CancelMonitor, JobCancelledError } from './cancel-monitor';
@@ -108,7 +109,8 @@ async function main() {
 
         if (needsPartB) {
           await cancelMonitor.assertNotCancelled(applicationId);
-          await runPartB(page, formData, api, applicationId);
+          const docs = await resolveDocuments(api, applicationId, application.constitution);
+          await runPartB(page, formData, api, applicationId, docs, application.constitution);
         }
 
         if (

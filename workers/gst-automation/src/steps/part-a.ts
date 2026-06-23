@@ -5,6 +5,7 @@ import type { InputWaiter } from '../input-waiter';
 import type { ApiClient } from '../api-client';
 import { saveSession } from '../session/context-manager';
 import { assertPageOpen, ensureOtpScreenReady, safeWait, waitAndExtractTrn, waitForTrnLoginOtpOrPartB, isOnPartBDashboard, isPartASuccessScreen, TRN_LOGIN_OTP_SELECTORS } from '../page-utils';
+import { clickEditOnTrnRow, waitForPartBForm } from './part-b-portal';
 import {
   districtAliases,
   fillInputByLabel,
@@ -314,11 +315,7 @@ export async function loginWithTrn(
   await api.reportProgress(applicationId, 'trn_login');
 
   if (await isOnPartBDashboard(page)) {
-    const editIcon = page.locator(selectors.partB.editIcon).first();
-    if (await editIcon.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await editIcon.click();
-      await safeWait(page, 2000);
-    }
+    await clickEditOnTrnRow(page, trn);
     await api.updateApplication(applicationId, {
       status: 'PART_B_IN_PROGRESS',
       currentStep: 'BUSINESS',
@@ -333,11 +330,7 @@ export async function loginWithTrn(
       await safeWait(page, 3000);
     }
     if (await isOnPartBDashboard(page)) {
-      const editIcon = page.locator(selectors.partB.editIcon).first();
-      if (await editIcon.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await editIcon.click();
-        await safeWait(page, 2000);
-      }
+      await clickEditOnTrnRow(page, trn);
       await api.updateApplication(applicationId, {
         status: 'PART_B_IN_PROGRESS',
         currentStep: 'BUSINESS',
@@ -419,10 +412,13 @@ export async function loginWithTrn(
   let onPartB = await isOnPartBDashboard(page);
 
   if (!onPartB) {
-    await page.goto(registrationUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await safeWait(page, 1500);
-    await selectTrnRadio();
-    await fillTrnInput(page, trn);
+    await waitForPartBForm(page, trn).catch(async () => {
+      await page.goto(registrationUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await safeWait(page, 1500);
+      await selectTrnRadio();
+      await fillTrnInput(page, trn);
+      await waitForPartBForm(page, trn, 10000);
+    });
     onPartB = await isOnPartBDashboard(page);
   }
 
@@ -432,10 +428,9 @@ export async function loginWithTrn(
     );
   }
 
-  const editIcon = page.locator(selectors.partB.editIcon).first();
-  if (await editIcon.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await editIcon.click();
-    await safeWait(page, 2000);
+  await clickEditOnTrnRow(page, trn);
+  if (!(await isOnPartBDashboard(page))) {
+    await waitForPartBForm(page, trn, 15000);
   }
 
   await api.updateApplication(applicationId, {

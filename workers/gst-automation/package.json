@@ -8,7 +8,7 @@
     "start": "dotenv -e ../../.env -- node dist/index.js",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "test:part-a": "vitest run src/steps/part-a.test.ts src/page-utils.test.ts src/form-utils.test.ts"
+    "test:part-a": "vitest run src/steps/part-a.test.ts src/page-utils.test.ts src/form-utils.test.ts src/steps/part-b-portal.test.ts"
   },
   "dependencies": {
     "@registerkaro/shared-types": "workspace:*",

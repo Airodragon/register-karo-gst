@@ -62,6 +62,17 @@ export interface Address {
   city: string;
   state: string;
   pincode: string;
+  locality?: string;
+  landmark?: string;
+  floorNo?: string;
+  flatNo?: string;
+}
+
+export interface JurisdictionData {
+  ward?: string;
+  commissionerate?: string;
+  division?: string;
+  range?: string;
 }
 
 export interface PartAData {
@@ -110,8 +121,15 @@ export interface PrincipalPlaceOfBusinessData {
   email: string;
   mobile: string;
   telephone?: string;
+  locality?: string;
+  landmark?: string;
+  floorNo?: string;
+  flatNo?: string;
   natureOfPossession: 'Own' | 'Rented' | 'Leased' | 'Consent' | 'Others';
   businessActivities: string[];
+  jurisdiction?: JurisdictionData;
+  hasAuthorizedRepresentative?: boolean;
+  hasAdditionalPlaces?: boolean;
   latitude?: number;
   longitude?: number;
 }
