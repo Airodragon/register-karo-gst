@@ -21,7 +21,9 @@
     "filing:create": "bash scripts/create-real-filing.sh",
     "test:part-a": "pnpm --filter @registerkaro/gst-automation test:part-a",
     "test:part-a:live": "bash scripts/test-part-a-fill.sh",
-    "test": "pnpm --filter @registerkaro/gst-form-schema test && pnpm test:part-a"
+    "test": "pnpm --filter @registerkaro/gst-form-schema test && pnpm test:part-a",
+    "deploy:vercel": "vercel --cwd apps/web",
+    "deploy:vercel:prod": "vercel --cwd apps/web --prod"
   },
   "engines": {
     "node": ">=20"

@@ -85,6 +85,7 @@ See [`.env.example`](.env.example). Set `WORKER_TOKEN` consistently on API and w
 - [GST field mapping](docs/gst-field-mapping.md)
 - [Ops OTP access (v1 manual)](docs/ops-otp-access.md)
 - [Production deployment (VPS + Docker)](docs/deployment.md)
+- [Vercel frontend deployment](docs/vercel-deployment.md)
 - [Sample filing pack](fixtures/sample-proprietorship-filing.json)
 
 ## Notes
