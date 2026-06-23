@@ -1,0 +1,22 @@
+FROM mcr.microsoft.com/playwright:v1.49.1-jammy AS base
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+WORKDIR /app
+
+FROM base AS builder
+COPY . .
+RUN pnpm install --frozen-lockfile \
+ && pnpm --filter @registerkaro/shared-types build \
+ && pnpm --filter @registerkaro/gst-automation build
+
+FROM base AS runner
+ENV NODE_ENV=production
+WORKDIR /app
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/workers/gst-automation ./workers/gst-automation
+
+WORKDIR /app/workers/gst-automation
+CMD ["node", "dist/index.js"]

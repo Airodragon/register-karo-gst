@@ -1,0 +1,35 @@
+{
+  "name": "registerkaro",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @registerkaro/api --filter @registerkaro/web dev",
+    "dev:api": "pnpm --filter @registerkaro/api dev",
+    "dev:web": "pnpm --filter @registerkaro/web dev",
+    "dev:worker": "pnpm --filter @registerkaro/gst-automation dev",
+    "dev:all": "pnpm --parallel --filter @registerkaro/api --filter @registerkaro/web --filter @registerkaro/gst-automation dev",
+    "setup": "bash scripts/setup.sh",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "db:migrate": "pnpm --filter @registerkaro/api db:migrate",
+    "docker:up": "export PATH=\"/Applications/Docker.app/Contents/Resources/bin:$PATH\" && docker compose -f infra/docker-compose.yml up -d",
+    "docker:down": "export PATH=\"/Applications/Docker.app/Contents/Resources/bin:$PATH\" && docker compose -f infra/docker-compose.yml down",
+    "start": "bash scripts/start.sh",
+    "docker:all": "bash scripts/start.sh",
+    "stop": "bash scripts/stop-dev.sh",
+    "smoke": "bash scripts/smoke-automation.sh",
+    "filing:create": "bash scripts/create-real-filing.sh",
+    "test:part-a": "pnpm --filter @registerkaro/gst-automation test:part-a",
+    "test:part-a:live": "bash scripts/test-part-a-fill.sh",
+    "test": "pnpm --filter @registerkaro/gst-form-schema test && pnpm test:part-a"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "pnpm": {
+    "overrides": {
+      "ioredis": "5.4.2"
+    }
+  }
+}

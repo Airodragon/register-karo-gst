@@ -1,0 +1,70 @@
+{
+  "_comment": "Anonymized sample filing pack for development.",
+  "partA": {
+    "taxpayerType": "Taxpayer",
+    "state": "Maharashtra",
+    "district": "Mumbai Suburban",
+    "legalName": "Sample Traders",
+    "pan": "ABCDE1234F",
+    "pasEmail": "ops@example.com",
+    "pasMobile": "9876543210"
+  },
+  "business": {
+    "tradeName": "Sample Traders",
+    "constitutionOfBusiness": "Proprietorship",
+    "district": "Mumbai Suburban",
+    "compositionLevy": false,
+    "rule14A": false,
+    "commencementDate": "2024-01-01",
+    "liabilityDate": "2024-06-01",
+    "casualTaxpayer": false,
+    "reasonForRegistration": "Crossing the threshold"
+  },
+  "promoter": {
+    "firstName": "Raj",
+    "middleName": "",
+    "lastName": "Sample",
+    "fatherName": "Demo Father",
+    "dateOfBirth": "1990-05-15",
+    "mobile": "9876543210",
+    "email": "ops@example.com",
+    "gender": "Male",
+    "designation": "Proprietor",
+    "pan": "ABCDE1234F",
+    "isPrimaryAuthorizedSignatory": true,
+    "residentialAddress": {
+      "building": "101 Sample Apartments",
+      "street": "Sample Street",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "pincode": "400001"
+    }
+  },
+  "principalPlaceOfBusiness": {
+    "building": "Shop 5, Sample Complex",
+    "street": "Business Road",
+    "city": "Mumbai",
+    "pincode": "400001",
+    "district": "Mumbai Suburban",
+    "email": "ops@example.com",
+    "mobile": "9876543210",
+    "natureOfPossession": "Rented",
+    "businessActivities": ["Retail Business", "Warehouse / Depot"]
+  },
+  "goodsAndServices": {
+    "hsnCodes": ["6105", "5208"],
+    "sacCodes": ["995478"]
+  },
+  "stateSpecific": {
+    "electricityBoard": "The Brihanmumbai Electric Supply and Transport Undertaking",
+    "caNumber": "1234567890"
+  },
+  "aadhaarAuthentication": {
+    "optIn": true,
+    "selectedPersons": ["promoter"]
+  },
+  "verification": {
+    "place": "Mumbai",
+    "submissionMethod": "EVC"
+  }
+}

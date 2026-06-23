@@ -1,0 +1,68 @@
+# RegisterKaro CI
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: registerkaro
+          POSTGRES_PASSWORD: registerkaro
+          POSTGRES_DB: registerkaro
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build packages
+        run: pnpm --filter @registerkaro/shared-types build && pnpm --filter @registerkaro/gst-form-schema build
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Run unit tests
+        run: pnpm test
+
+      - name: Generate Prisma client
+        run: pnpm --filter @registerkaro/api db:generate
+        env:
+          DATABASE_URL: postgresql://registerkaro:registerkaro@localhost:5432/registerkaro
+
+      - name: Build API
+        run: pnpm --filter @registerkaro/api build
+
+      - name: Build Web
+        run: pnpm --filter @registerkaro/web build
+
+      - name: Build Worker
+        run: pnpm --filter @registerkaro/gst-automation build

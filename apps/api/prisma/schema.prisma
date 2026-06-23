@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ApplicationStatus {
+  DRAFT
+  QUEUED
+  RUNNING
+  AWAITING_CAPTCHA
+  AWAITING_OTP
+  TRN_RECEIVED
+  PART_B_IN_PROGRESS
+  PART_B_SAVED
+  SUBMITTED
+  AWAITING_AADHAAR
+  AWAITING_EVC_OTP
+  ARN_RECEIVED
+  FAILED
+  EXPIRED
+  BIOMETRIC_REQUIRED
+}
+
+enum ApplicationStep {
+  CLIENT_PART_A
+  BUSINESS
+  PEOPLE
+  PLACE_OF_BUSINESS
+  GOODS_SERVICES
+  REVIEW_SUBMIT
+  AADHAAR_TRACKING
+  COMPLETE
+}
+
+enum ConstitutionType {
+  proprietorship
+  partnership
+  huf
+}
+
+enum UserInputType {
+  CAPTCHA
+  PART_A_OTP
+  TRN_LOGIN_CAPTCHA
+  TRN_LOGIN_OTP
+  EVC_OTP
+  AADHAAR_OTP
+}
+
+enum UserRole {
+  admin
+  operator
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         UserRole @default(operator)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  applications Application[]
+  auditEvents  AuditEvent[]
+  templates    FilingTemplate[]
+
+  @@map("users")
+}
+
+model Application {
+  id              String            @id @default(uuid())
+  clientRef       String            @map("client_ref")
+  status          ApplicationStatus @default(DRAFT)
+  currentStep     ApplicationStep   @default(CLIENT_PART_A) @map("current_step")
+  constitution    ConstitutionType  @default(proprietorship)
+  trn             String?
+  trnExpiresAt    DateTime?         @map("trn_expires_at")
+  arn             String?
+  formData        Json              @default("{}") @map("form_data")
+  portalSession   Json?             @map("portal_session")
+  automationJobId String?           @map("automation_job_id")
+  pendingInput    UserInputType?    @map("pending_input")
+  pendingInputData Json?            @map("pending_input_data")
+  errorLog        String?           @map("error_log")
+  failureScreenshotKey String?      @map("failure_screenshot_key")
+  automationProgress Json?          @map("automation_progress")
+  operatorId      String?           @map("operator_id")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  operator    User?         @relation(fields: [operatorId], references: [id])
+  documents   Document[]
+  auditEvents AuditEvent[]
+  jobs        AutomationJob[]
+
+  @@index([status])
+  @@index([trn])
+  @@index([clientRef])
+  @@index([operatorId])
+  @@map("applications")
+}
+
+model Document {
+  id            String   @id @default(uuid())
+  applicationId String   @map("application_id")
+  type          String
+  fileName      String   @map("file_name")
+  mimeType      String   @map("mime_type")
+  sizeBytes     Int      @map("size_bytes")
+  storageKey    String   @map("storage_key")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("documents")
+}
+
+model AuditEvent {
+  id            String   @id @default(uuid())
+  applicationId String   @map("application_id")
+  operatorId    String?  @map("operator_id")
+  eventType     String   @map("event_type")
+  message       String
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  operator    User?       @relation(fields: [operatorId], references: [id])
+
+  @@index([applicationId])
+  @@map("audit_events")
+}
+
+model AutomationJob {
+  id            String   @id @default(uuid())
+  applicationId String   @map("application_id")
+  bullJobId     String?  @map("bull_job_id")
+  step          String
+  status        String   @default("pending")
+  startedAt     DateTime? @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  error         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("automation_jobs")
+}
+
+model FilingTemplate {
+  id            String           @id @default(uuid())
+  name          String
+  constitution  ConstitutionType
+  formData      Json             @map("form_data")
+  createdById   String           @map("created_by_id")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  @@index([createdById])
+  @@map("filing_templates")
+}

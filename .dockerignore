@@ -1,0 +1,16 @@
+node_modules
+.next
+dist
+.turbo
+.git
+.env
+.env.local
+.env.*.local
+*.log
+coverage
+playwright-report
+test-results
+.DS_Store
+uploads
+fixtures/local-*.json
+apps/web/tsconfig.tsbuildinfo

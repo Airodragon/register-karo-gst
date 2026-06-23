@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GST Part A — test fixture</title>
+</head>
+<body>
+  <h1>New Registration</h1>
+  <form>
+    <p>
+      <label><input type="radio" name="regType" value="new" checked /> New Registration</label>
+    </p>
+    <p>
+      <label for="applnType">I am a</label>
+      <select id="applnType" name="applnType">
+        <option value="">Select</option>
+        <option value="TP">Taxpayer</option>
+        <option value="TDS">Tax Deductor</option>
+      </select>
+    </p>
+    <p>
+      <label for="statecd">State / UT</label>
+      <select id="statecd" name="statecd">
+        <option value="">Select</option>
+        <option value="07">Delhi</option>
+        <option value="27">Maharashtra</option>
+      </select>
+    </p>
+    <p>
+      <label for="districtcd">District</label>
+      <select id="districtcd" name="districtcd">
+        <option value="">Select</option>
+        <option value="SW">South West</option>
+        <option value="ND">New Delhi</option>
+        <option value="MUM">Mumbai</option>
+      </select>
+    </p>
+    <p>
+      <label for="lgnm">Legal Name of the Business (As mentioned in PAN)</label>
+      <input id="lgnm" name="lgnm" type="text" />
+    </p>
+    <p>
+      <label for="pan">Permanent Account Number (PAN)</label>
+      <input id="pan" name="pan" type="text" />
+    </p>
+    <p>
+      <label for="email">Email Address</label>
+      <input id="email" name="email" type="email" />
+    </p>
+    <p>
+      <label for="mobile">Mobile Number</label>
+      <input id="mobile" name="mobile" type="tel" />
+    </p>
+  </form>
+</body>
+</html>
